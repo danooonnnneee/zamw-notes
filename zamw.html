@@ -1,0 +1,190 @@
+<!-- index.html -->
+<!-- Мини-приложение заметок: эстетика, стекло, glow, атмосфера -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Заметки</title>
+<style>
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body{
+  margin:0;height:100vh;overflow:hidden;
+  background:radial-gradient(circle at top,#2a1450,#12081f 60%);
+  display:flex;justify-content:center;align-items:center
+}
+
+/* виньетка */
+body::after{
+  content:"";position:fixed;inset:0;
+  background:radial-gradient(circle at center,transparent 60%,rgba(0,0,0,.55));
+  pointer-events:none
+}
+
+/* частицы */
+.particle{position:absolute;width:4px;height:4px;background:#a98bff;border-radius:50%;opacity:.18;animation:fall linear infinite}
+@keyframes fall{from{transform:translateY(-10px)}to{transform:translateY(110vh)}}
+
+.app{
+  width:92%;max-width:1150px;height:86vh;border-radius:26px;
+  background:rgba(30,15,55,.65);
+  backdrop-filter:blur(18px);
+  box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.05);
+  display:flex;overflow:hidden
+}
+
+.sidebar{
+  width:250px;padding:16px;
+  background:linear-gradient(180deg,rgba(60,30,90,.55),rgba(36,20,58,.55));
+  backdrop-filter:blur(12px);
+  display:flex;flex-direction:column
+}
+.sidebar h2{margin:0 0 14px;color:#fff;font-size:15px;opacity:.9}
+
+.section{
+  padding:11px 14px;border-radius:12px;margin-bottom:8px;
+  color:#d7ccff;cursor:pointer;display:flex;align-items:center;gap:8px;
+  transition:.25s
+}
+.section:hover{background:rgba(124,77,255,.15);box-shadow:0 0 0 1px rgba(124,77,255,.25)}
+.section.active{
+  background:linear-gradient(135deg,#7c4dff,#9b6bff);
+  color:#fff;box-shadow:0 10px 30px rgba(124,77,255,.45)
+}
+.section span{flex:1}
+.section button{background:none;border:none;color:#ffd1d6;cursor:pointer;opacity:.6}
+.section button:hover{opacity:1}
+
+.add-section{
+  margin-top:auto;padding:12px;border-radius:14px;text-align:center;cursor:pointer;
+  background:linear-gradient(135deg,#332055,#4a2a7a);
+  color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)
+}
+
+.content{flex:1;display:flex;flex-direction:column;position:relative;animation:open .45s ease}
+@keyframes open{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* часы */
+.clock{position:absolute;right:28px;top:24px;text-align:right;color:#efeaff;pointer-events:none}
+.clock .time{
+  font-size:36px;font-weight:600;letter-spacing:1px;
+  text-shadow:0 0 18px rgba(155,107,255,.55)
+}
+.clock .date{font-size:13px;color:#c9bcff}
+
+header{
+  padding:22px 22px 10px;color:#fff;font-size:18px;
+  text-shadow:0 0 10px rgba(124,77,255,.25)
+}
+
+textarea{
+  flex:1;padding:28px 22px 22px;background:transparent;border:none;outline:none;resize:none;
+  color:#fff;font-size:16px;line-height:1.7;
+  caret-color:#bfa7ff
+}
+textarea::placeholder{color:#9c8bcf}
+textarea:focus{filter:drop-shadow(0 0 6px rgba(124,77,255,.15))}
+
+footer{
+  padding:10px 18px;font-size:11px;color:#b7a8e6;text-align:right;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.25))
+}
+
+/* индикатор скролла */
+.scroll-indicator{
+  position:absolute;right:10px;top:80px;width:3px;height:60px;border-radius:3px;
+  background:linear-gradient(180deg,transparent,#9b6bff,transparent);
+  opacity:.35;animation:pulse 3s ease-in-out infinite
+}
+@keyframes pulse{0%,100%{opacity:.15}50%{opacity:.5}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <h2>Разделы</h2>
+    <div id="sections"></div>
+    <div class="add-section" onclick="addSection()">+ Новый раздел</div>
+  </div>
+
+  <div class="content">
+    <div class="clock">
+      <div class="time" id="time"></div>
+      <div class="date" id="date"></div>
+    </div>
+
+    <div class="scroll-indicator"></div>
+
+    <header id="title">Без названия</header>
+
+    <textarea id="note" placeholder="Спокойно пиши свои мысли…"></textarea>
+
+    <footer>Автосохранение · локально · офлайн</footer>
+  </div>
+</div>
+
+<script>
+/* время */
+function updateTime(){
+  const d=new Date();
+  time.textContent=d.toLocaleTimeString();
+  date.textContent=d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
+}
+setInterval(updateTime,1000);updateTime();
+
+/* частицы */
+for(let i=0;i<28;i++){
+  const p=document.createElement('div');
+  p.className='particle';
+  p.style.left=Math.random()*100+'vw';
+  p.style.animationDuration=14+Math.random()*30+'s';
+  document.body.appendChild(p);
+}
+
+/* данные */
+let data=JSON.parse(localStorage.getItem('notes_app')||'{}');
+let current=Object.keys(data)[0]||'Основное';
+if(!data[current]) data[current]='';
+
+const sectionsEl=document.getElementById('sections');
+const textarea=document.getElementById('note');
+const title=document.getElementById('title');
+
+function renderSections(){
+  sectionsEl.innerHTML='';
+  Object.keys(data).forEach(name=>{
+    const div=document.createElement('div');div.className='section'+(name===current?' active':'');
+    const span=document.createElement('span');span.textContent=name;span.onclick=()=>openSection(name);
+    const del=document.createElement('button');del.textContent='✕';
+    del.onclick=e=>{e.stopPropagation();deleteSection(name)};
+    div.append(span,del);sectionsEl.appendChild(div);
+  });
+}
+
+function openSection(name){
+  current=name;textarea.value=data[name];title.textContent=name;
+  const c=document.querySelector('.content');c.style.animation='none';void c.offsetWidth;c.style.animation='open .45s ease';
+  renderSections();
+}
+
+function addSection(){
+  const name=prompt('Название раздела');
+  if(!name||data[name])return;
+  data[name]='';save();openSection(name);
+}
+
+function deleteSection(name){
+  if(!confirm(`Удалить раздел "${name}"?`))return;
+  delete data[name];current=Object.keys(data)[0]||'Основное';
+  if(!data[current]) data[current]='';save();openSection(current);
+}
+
+textarea.addEventListener('input',()=>{data[current]=textarea.value;save()});
+function save(){localStorage.setItem('notes_app',JSON.stringify(data))}
+
+renderSections();openSection(current);
+</script>
+
+</body>
+</html>
